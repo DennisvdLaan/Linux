@@ -1,0 +1,57 @@
+#! /bin/bash
+
+#
+# Studenten: Dennis van der Laan & Stijn Kobus
+#
+
+dir=$1 # Directory	
+var=$2 # Vul een maand of week in
+
+if [ -d "$dir" ]; 
+then	
+	for i in "$dir"/*
+	do
+		if [ -f "$i" ];
+		then
+			if [ $var == "week" ]; # Als var is week:
+			then
+				fullDir="$dir$creationweek"
+				creationweek=$(ls -l --time-style='+%-V' "$i" | awk '{print $6}')
+				if [ -d "$dir$creationweek" ]; 
+				then
+					cp $i "$dir$creationweek/"
+				else
+					mkdir "$dir$creationweek/"
+					cp $i "$dir$creationweek/"
+				fi
+				
+				originalhash=$(sudo md5sum "$i" | cut -d " " -f1)
+				newhash=$(sudo md5sum "$dir$creationweek/${i##*/}" | cut -d " " -f1)
+				if [ $originalhash == $newhash ];
+				then
+					rm $i
+				fi
+
+			else # var is dus een maand
+				creationmonth=$(ls -l --time-style='+%-m' "$i" | awk '{print $6}')
+				if [ -d "$dir$creationmonth" ];
+				then
+					cp $i "$dir$creationmonth/"
+				else
+					mkdir "$dir$creationmonth/"
+					cp $i "$dir$creationmonth/"
+				fi
+				
+				originalhash=$(sudo md5sum "$i" | cut -d " " -f1)
+				newhash=$(sudo md5sum "$dir$creationmonth/${i##*/}" | cut -d " " -f1)
+				if [ $originalhash == $newhash ];
+				then
+					rm $i 
+				fi
+			fi
+		fi
+	done
+else
+	echo "Geen geldige directory"
+	exit		
+fi
