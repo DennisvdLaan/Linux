@@ -1,0 +1,70 @@
+
+- hosts: all
+  remote_user: D440745
+  become: true
+
+  tasks:
+  - name: Install aptitude
+    apt:
+      name: aptitude
+      state: latest
+      update_cache: true
+
+  - name: Install Python
+    apt:
+      name: python3
+      state: latest
+      update_cache: true
+
+  - name: update
+    apt:
+     upgrade: dist
+     force_apt_get: yes
+  
+  - name: Install munin
+    apt:
+     name: munin
+     state: latest
+     update_cache: true
+  
+  - name: Install Apache2
+    apt:
+     name: 
+     - apache2 
+     - libcgi-fast-perl
+     - libapache2-mod-fcgid
+     state: latest
+     update_cache: true
+
+  - name: Edit munin conf file
+    lineinfile:
+      dest: /etc/munin/munin.conf
+      line: "{{ item }}"
+    with_items:
+    - 'dbdir /var/lib/munin'
+    - 'htmldir /var/cache/munin/www'
+    - 'logdir /var/log/munin'
+    - 'rundir /var/run/munin'
+
+  - name: Configure Apache2
+    ansible.builtin.file:
+     src: "/etc/munin/apache24.conf"
+     dest: "/etc/apache2/conf-enabled/munin.conf"
+     state: link
+
+  - name: Edit munin servers
+    lineinfile:
+     dest: /etc/munin/munin.conf
+     line: "{{ item }}"
+    with_items:
+    - '[node0.example.com]'
+    - '   address 10.0.0.102'
+    - '   use_node_name yes'
+
+  - name: restart apache2 & munin-node
+    ansible.builtin.service:
+      name: 
+      - apache2
+      - munin munin-node
+      state: restarted
+      enabled: true

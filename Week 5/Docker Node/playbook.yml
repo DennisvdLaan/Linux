@@ -116,6 +116,7 @@
       ansible.builtin.file:
        src: "{{ item.src }}"
        line: "{{ item.dest }}"
+       state: link
       with_items:
        - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_containers' }
        - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_cpu' }
