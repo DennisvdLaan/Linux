@@ -61,6 +61,16 @@
     - '   address 10.0.0.102'
     - '   use_node_name yes'
 
+  - name: Add munin plugin
+    lineinfile:
+     dest: /etc/munin/plugin-conf.d
+     line: "{{ item }}"
+    with_items:
+    - '[docker_*]'
+    - 'group docker'
+    - 'env.DOCKER_HOST unix://run/docker.sock'
+    - 'env.EXCLUDE_CONTAINER_NAME regexp'
+
   - name: restart apache2 & munin-node
     ansible.builtin.service:
       name: 
