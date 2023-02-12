@@ -108,6 +108,26 @@
     - 'env.DOCKER_HOST unix://run/docker.sock'
     - 'env.EXCLUDE_CONTAINER_NAME regexp'
 
+# Clone Github repo
+
+  - name: Install git
+    apt:
+     name: git
+     state: latest
+     update_cache: true
+
+  - name: clone repo
+    git:
+     repo: https://github.com/DennisvdLaan/Ansible-WordPress-installation.git
+     dest: /home/
+     clone: yes
+     update: yes
+
+  - name: run playbook file
+    command: playbook -i hosts /home/playbook.yml
+
+# Restart
+
   - name: restart apache2 & munin-node & rsyslog
     ansible.builtin.service:
       name: 
