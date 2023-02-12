@@ -9,7 +9,7 @@
   remote_user: D440745
   become: true
   vars:
-    ipadrhost: 10.0.0.101
+    ipadrhost: "10.0.0.101"
     ansible_python_interpreter: /usr/bin/python3
     container_count: 4
     default_container_name: docker
@@ -26,7 +26,7 @@
     - mysql
     - wordpress
 
-   tasks:
+  tasks:
     - name: Install aptitude
       apt:
         name: aptitude

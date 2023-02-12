@@ -1,4 +1,4 @@
-ipadrhost: 10.0.0.101
+ipadrhost: "10.0.0.101"
 php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'php-soap', 'php-intl', 'php-zip' ]
 mysql_root_password: "mysql_root_password"
 mysql_db: "wordpress"
