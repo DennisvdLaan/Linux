@@ -21,6 +21,12 @@
      upgrade: dist
      force_apt_get: yes
   
+  - name: install rsyslog
+    apt:
+     name: rsyslog
+     state: latest
+     update_cache: true
+
   - name: Install munin
     apt:
      name: munin
@@ -35,6 +41,37 @@
      - libapache2-mod-fcgid
      state: latest
      update_cache: true
+
+  - name: Edit rsyslog config
+    lineinfile:
+      dest: /etc/rsyslog.conf
+      line: "{{ item }}"
+    with_items:
+    - '$ModLoad imudp'
+    - '$UDPServerRun 514'
+    - '$ModLoad imtcp'
+    - '$InputTCPServerRun 50514'
+    - '$AllowedSender TCP, 10.0.0.102/24, [::1]/128, *.example.net'
+    - '$AllowedSender UDP, 10.0.0.102/24, [::1]/128, *.example.net'
+    - '$AllowedSender TCP, 10.0.0.103/24, [::1]/128, *.example.net'
+    - '$AllowedSender UDP, 10.0.0.103/24, [::1]/128, *.example.net'
+    - '$template remote-incoming-logs, "/var/log/%HOSTNAME%/%PROGRAMNAME%.log"'
+    - '*.* ?remote-incoming-logs'
+
+  - name: Allow TCP
+    ufw:
+     rule: allow
+     port: 50514
+     proto: tcp
+  
+  - name: Allow UDP
+    ufw:
+     rule: allow
+     port: 514
+     proto: udp
+
+  - name: ufw reload
+    command: ufw reload
 
   - name: Edit munin conf file
     lineinfile:
@@ -71,10 +108,11 @@
     - 'env.DOCKER_HOST unix://run/docker.sock'
     - 'env.EXCLUDE_CONTAINER_NAME regexp'
 
-  - name: restart apache2 & munin-node
+  - name: restart apache2 & munin-node & rsyslog
     ansible.builtin.service:
       name: 
       - apache2
       - munin munin-node
+      - rsyslog
       state: restarted
       enabled: true
