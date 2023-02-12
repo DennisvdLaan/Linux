@@ -1,0 +1,9 @@
+ipadrhost: 10.0.0.101
+php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'php-soap', 'php-intl', 'php-zip' ]
+mysql_root_password: "mysql_root_password"
+mysql_db: "wordpress"
+mysql_user: "D440745"
+mysql_password: "password"
+http_host: "10.0.0.101"
+http_conf: "10.0.0.101.conf"
+http_port: "80"

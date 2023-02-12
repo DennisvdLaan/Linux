@@ -1,0 +1,123 @@
+- name : Connecting to server  
+  hosts: all
+  remote_user: D440745
+  become: true
+  vars_files:
+    - vars/vars.yml
+
+  tasks:
+    - name: Install aptitude
+      apt:
+        name: aptitude
+        state: latest
+        update_cache: true
+
+    - name: Install LAMP
+      apt:
+        name: {{ item }}
+        state: latest
+        update_cache: true
+        loop: [ 'apache2', 'mysql-server', 'python3-pymysql', 'php', 'php-mysql', 'libapache2-mod-php' ]
+        
+    - name: Install PHP Modules
+      apt:
+       name: "{{ php_modules }}"
+       state: latest
+       update_cache: true
+
+# Configure MySQL
+
+    - name: set root password
+      mysql_user:
+       name: root
+       password: "{{ mysql_root_password }}"
+       login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create Wordpress DB
+      mysql_user:
+       name: "{{ mysql_user }}"
+       password: "{{ mysql_password }}"
+       priv: "{{ mysql_db }}.*:ALL"
+       state: present
+       login_user: root
+       login_password: "{{ mysql_root_password }}"
+
+    - name: "Allow HTTP port"
+      ufw:
+        rule: allow
+        port: "{{ http_port }}"
+        proto: tcp
+
+# Install Wordpress & Use
+
+    - name: Download & Unzip wordpress
+      unarchive:
+       src: https://wordpress.org/latest.tar.gz
+       dest: "/var/www/{{ http_host }}"
+       remote_src: yes
+       creates: "/var/www/{{ http_host }}/wordpress"
+
+    - name: setup config
+      template:
+       src: "files/wp-config.php.j2"
+       dest: "/var/www/{{ http_host }}/wordpress/wp-config.php"
+
+# Install rsyslog
+    - name: Install rsyslog & other required packages (for docker)
+      apt:
+        pkg:
+          - rsyslog
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
+
+    - name: update
+      apt:
+      upgrade: dist
+      force_apt_get: yes
+
+    - name: Add rsyslog conf
+      lineinfile:
+        dest: /etc/rsyslog.conf
+        regexp: '\Z'
+        line: '{{ item }}'
+      with_items:       
+        - "*.* @{{ ipadrhost }}:514"
+        - "*.* @{{ ipadrhost }}:50514"
+        - "$ActionQueueFileName queue"
+        - "$ActionQueueSaveOnShutdown on"
+        - "$ActionQueueType LinkedList"
+        - "$ActionQueueMaxDiskSpace 1g"
+        - "$ActionResumeRetryCount -1"
+
+    - name: Restart rsyslog
+      ansible.builtin.service:
+       name: rsyslog
+       state: restarted
+       enabled: true
+
+    - name: Install Munin-Node
+      apt:
+        name: munin-node
+        state: latest
+        update_cache: true
+
+    - name: Allow monitor IP
+      lineinfile:
+        dest: /etc/munin/munin-node.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+       - { regexp: 'allow ^::1$', line: 'allow ^10\.0\.0\.101$' }
+
+    - name: restart munin
+      ansible.builtin.service:
+       name: munin-node
+       state: restarted
+       enabled: true
