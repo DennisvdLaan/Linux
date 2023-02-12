@@ -11,6 +11,10 @@
   vars:
     ipadrhost: 10.0.0.101
     ansible_python_interpreter: /usr/bin/python3
+    container_count: 4
+    default_container_name: docker
+    default_container_image: ubuntu
+    default_container_command: sleep 1d
 
 
   # This section is used for define all tasks, which we want to do.
@@ -28,11 +32,24 @@
         name: aptitude
         state: latest
         update_cache: true
+
+    - name: Install Python
+      apt:
+        name: python3
+        state: latest
+        update_cache: true
         
-    - name: Install rsyslog
+    - name: Install rsyslog & other required packages (for docker)
       apt:
         pkg:
           - rsyslog
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
         state: latest
         update_cache: true
 
@@ -61,12 +78,6 @@
        state: restarted
        enabled: true
 
-    - name: Install Python
-      apt:
-        name: python3
-        state: latest
-        update_cache: true
-
     - name: Install Munin-Node
       apt:
         name: munin-node
@@ -81,6 +92,26 @@
       with_items:
        - { regexp: 'allow ^::1$', line: 'allow ^10\.0\.0\.101$' }
 
+    - name: Add Docker Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    
+    - name: Add Docker Repo
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+  
+    - name: Install Docker CE
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    - name: Install docker for python (Optional, added just because in the previous assignments python was used.)
+      pip:
+        name: docker
+
     - name: Add munin docker plugins
       ansible.builtin.file:
        src: "{{ item.src }}"
@@ -94,6 +125,21 @@
        - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_status' }
        - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_volumes' }
     
+    # Create Docker Machines
+
+    - name: Docker Image
+      community.docker.docker_image:
+       name: "{{ default_container_image }}"
+       source: pull
+    
+    - name: Create default containers
+      community.docker.docker_container:
+        name: "{{ default_container_name }}{{ item }}"
+        image: "{{ default_container_image }}"
+        command: "{{ default_container_command }}"
+        state: present
+      with_sequence: count={{ container_count }}
+
     - name: restart munin
       ansible.builtin.service:
        name: munin-node
