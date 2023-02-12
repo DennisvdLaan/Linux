@@ -1,0 +1,35 @@
+Main Client Ansible Script:
+
+/etc/rsyslog.conf
+
+$ModLoad imudp
+UDPServerRun 514
+
+$ModLoad imtcp
+$InputTCPServerRun 50514
+
+$AllowedSender UDP, {{ ipadrport }}, [::1]/128, *example.net
+$AllowedSender TCP, {{ ipadrport }}, [::1]/128, *example.net
+
+$template remote-incoming-logs, "/var/log/remotelogs/%FROMHOST-IP%/%PROGRAMNAME%.log"
+*.* ?remote-incoming-logs
+
+ufw allow from {{ ipadrport }} to any port 514 proto udp
+ufw allow from {{ ipadrport }} to any port 50514 proto tcp
+
+Node Ansible Script:
+
+apt-get install rsyslog -y
+
+/etc/rsyslog.conf
+
+*.* @{{ ipadrhost }}:514
+*.* @{{ ipadrhost }}:50514
+
+$ActionQueueFileName queue
+$ActionQueueMaxDiskSpace 1g
+$ActionQueueSaveOnShutdown on
+$ActionQueueType LinkedList
+$ActionResumeRetryCount -1
+
+systemctl restart rsyslog

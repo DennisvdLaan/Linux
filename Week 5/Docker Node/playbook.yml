@@ -1,0 +1,101 @@
+  # This section is used for connect to server
+  # name - this field is used for naming task
+  # hosts - in this field we are define hostname/server, in which we want to connect
+  # remote_user - this field define user, which we want to use for connect into server
+  # become - because we dont want to use root user, we must use sudo privilleges and for this we must set value "yes"
+  
+- name : Connecting to server  
+  hosts: all
+  remote_user: D440745
+  become: true
+  vars:
+    ipadrhost: 10.0.0.101
+    ansible_python_interpreter: /usr/bin/python3
+
+
+  # This section is used for define all tasks, which we want to do.
+  # roles - there we have defined "sections", which will be used.
+
+  roles: 
+    - server
+    - php
+    - mysql
+    - wordpress
+
+   tasks:
+    - name: Install aptitude
+      apt:
+        name: aptitude
+        state: latest
+        update_cache: true
+        
+    - name: Install rsyslog
+      apt:
+        pkg:
+          - rsyslog
+        state: latest
+        update_cache: true
+
+    - name: update
+      apt:
+      upgrade: dist
+      force_apt_get: yes
+
+    - name: Add rsyslog conf
+      lineinfile:
+        dest: /etc/rsyslog.conf
+        regexp: '\Z'
+        line: '{{ item }}'
+      with_items:       
+        - "*.* @{{ ipadrhost }}:514"
+        - "*.* @{{ ipadrhost }}:50514"
+        - "$ActionQueueFileName queue"
+        - "$ActionQueueSaveOnShutdown on"
+        - "$ActionQueueType LinkedList"
+        - "$ActionQueueMaxDiskSpace 1g"
+        - "$ActionResumeRetryCount -1"
+
+    - name: Restart rsyslog
+      ansible.builtin.service:
+       name: rsyslog
+       state: restarted
+       enabled: true
+
+    - name: Install Python
+      apt:
+        name: python3
+        state: latest
+        update_cache: true
+
+    - name: Install Munin-Node
+      apt:
+        name: munin-node
+        state: latest
+        update_cache: true
+
+    - name: Allow monitor IP
+      lineinfile:
+        dest: /etc/munin/munin-node.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+       - { regexp: 'allow ^::1$', line: 'allow ^10\.0\.0\.101$' }
+
+    - name: Add munin docker plugins
+      ansible.builtin.file:
+       src: "{{ item.src }}"
+       line: "{{ item.dest }}"
+      with_items:
+       - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_containers' }
+       - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_cpu' }
+       - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_images' }
+       - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_memory' }
+       - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_network' }
+       - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_status' }
+       - { src: '/usr/share/munin/plugins/docker_', dest: '/etc/munin/plugins/docker_volumes' }
+    
+    - name: restart munin
+      ansible.builtin.service:
+       name: munin-node
+       state: restarted
+       enabled: true
